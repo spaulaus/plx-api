@@ -21,7 +21,7 @@
 # TGT_TYPE    = Type of Target image [App | Library | Driver]
 # DEBUG       = Add/remove the comment symbol(#) to disable/enable debugging.
 #=============================================================================
-ImageName   = PlxApi$(DBG)
+ImageName   = libPlxApi$(DBG)
 TGT_TYPE    = Library
 #DEBUG       = 1
 

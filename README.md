@@ -1,2 +1,5 @@
 # plx-api
-API for PLX devices. The original version of this API can be downloaded from [here](https://support.xia.com/default.asp?W372).
+**This software is not supported or provided by Broadcom**
+The original software can be obtained from the official [Broadcom webpage](https://www.broadcom.com/products/pcie-switches-bridges/software-dev-kit)
+
+We have converted the original software into Cmake in order to facilitate easier installation of the software.

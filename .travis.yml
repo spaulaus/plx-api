@@ -30,6 +30,3 @@ before_install:
 
 script:
   - make all
-
-after_script:
-  - if [ -f PlxApi/Library/libPlxApi.a ]; then echo "Successfully made the library!;fi

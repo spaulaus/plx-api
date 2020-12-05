@@ -1,22 +1,34 @@
 /*******************************************************************************
- * Copyright (c) PLX Technology, Inc.
+ * Copyright 2013-2018 Avago Technologies
+ * Copyright (c) 2009 to 2012 PLX Technology Inc.  All rights reserved.
  *
- * PLX Technology Inc. licenses this source file under the GNU Lesser General Public
- * License (LGPL) version 2.  This source file may be modified or redistributed
- * under the terms of the LGPL and without express permission from PLX Technology.
+ * This software is available to you under a choice of one of two
+ * licenses.  You may choose to be licensed under the terms of the GNU
+ * General Public License (GPL) Version 2, available from the file
+ * COPYING in the main directorY of this source tree, or the
+ * BSD license below:
  *
- * PLX Technology, Inc. provides this software AS IS, WITHOUT ANY WARRANTY,
- * EXPRESS OR IMPLIED, INCLUDING, WITHOUT LIMITATION, ANY WARRANTY OF
- * MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.  PLX makes no guarantee
- * or representations regarding the use of, or the results of the use of,
- * the software and documentation in terms of correctness, accuracy,
- * reliability, currentness, or otherwise; and you rely on the software,
- * documentation and results solely at your own risk.
+ *     Redistribution and use in source and binary forms, with or
+ *     without modification, are permitted provided that the following
+ *     conditions are met:
  *
- * IN NO EVENT SHALL PLX BE LIABLE FOR ANY LOSS OF USE, LOSS OF BUSINESS,
- * LOSS OF PROFITS, INDIRECT, INCIDENTAL, SPECIAL OR CONSEQUENTIAL DAMAGES
- * OF ANY KIND.
+ *      - Redistributions of source code must retain the above
+ *        copyright notice, this list of conditions and the following
+ *        disclaimer.
  *
+ *      - Redistributions in binary form must reproduce the above
+ *        copyright notice, this list of conditions and the following
+ *        disclaimer in the documentation and/or other materials
+ *        provided with the distribution.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  ******************************************************************************/
 
 /******************************************************************************
@@ -31,7 +43,7 @@
  *
  * Revision History:
  *
- *      05-01-13 : PLX SDK v7.10
+ *      01-01-18 : PLX SDK v8.00
  *
  ******************************************************************************/
 
@@ -168,10 +180,10 @@ PlxChipSetInterruptStatusFlags(
     if (pIntData->Source_Ints & INTR_TYPE_LOCAL_1)
         pPlxIntr->LocalToPci = (1 << 0);
 
-    if (pIntData->Source_Ints & INTR_TYPE_DMA_0) 
+    if (pIntData->Source_Ints & INTR_TYPE_DMA_0)
         pPlxIntr->DmaDone |= (1 << 0);
 
-    if (pIntData->Source_Ints & INTR_TYPE_DMA_1) 
+    if (pIntData->Source_Ints & INTR_TYPE_DMA_1)
         pPlxIntr->DmaDone |= (1 << 1);
 
     if (pIntData->Source_Ints & INTR_TYPE_OUTBOUND_POST)
@@ -210,7 +222,7 @@ PlxChipTypeDetect(
             0x70
             );
 
-    if ((RegValue & 0xFFFF) == PLX_VENDOR_ID)
+    if ((RegValue & 0xFFFF) == PLX_PCI_VENDOR_ID_PLX)
     {
         pdx->Key.PlxChip = (U16)(RegValue >> 16);
 
@@ -251,7 +263,7 @@ PlxChipTypeDetect(
         pdx->Key.PlxChip, pdx->Key.PlxRevision
         ));
 
-    return ApiSuccess;
+    return PLX_STATUS_OK;
 }
 
 
@@ -322,7 +334,7 @@ PlxChipGetRemapOffset(
                 return;
             }
             break;
-            
+
         case 2:
             // BAR 2 could be Space 0 or Space 1 if shifted
             if (bBarsShifted)

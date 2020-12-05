@@ -1,22 +1,34 @@
 /*******************************************************************************
- * Copyright (c) PLX Technology, Inc.
+ * Copyright 2013-2018 Avago Technologies
+ * Copyright (c) 2009 to 2012 PLX Technology Inc.  All rights reserved.
  *
- * PLX Technology Inc. licenses this source file under the GNU Lesser General Public
- * License (LGPL) version 2.  This source file may be modified or redistributed
- * under the terms of the LGPL and without express permission from PLX Technology.
+ * This software is available to you under a choice of one of two
+ * licenses.  You may choose to be licensed under the terms of the GNU
+ * General Public License (GPL) Version 2, available from the file
+ * COPYING in the main directorY of this source tree, or the
+ * BSD license below:
  *
- * PLX Technology, Inc. provides this software AS IS, WITHOUT ANY WARRANTY,
- * EXPRESS OR IMPLIED, INCLUDING, WITHOUT LIMITATION, ANY WARRANTY OF
- * MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.  PLX makes no guarantee
- * or representations regarding the use of, or the results of the use of,
- * the software and documentation in terms of correctness, accuracy,
- * reliability, currentness, or otherwise; and you rely on the software,
- * documentation and results solely at your own risk.
+ *     Redistribution and use in source and binary forms, with or
+ *     without modification, are permitted provided that the following
+ *     conditions are met:
  *
- * IN NO EVENT SHALL PLX BE LIABLE FOR ANY LOSS OF USE, LOSS OF BUSINESS,
- * LOSS OF PROFITS, INDIRECT, INCIDENTAL, SPECIAL OR CONSEQUENTIAL DAMAGES
- * OF ANY KIND.
+ *      - Redistributions of source code must retain the above
+ *        copyright notice, this list of conditions and the following
+ *        disclaimer.
  *
+ *      - Redistributions in binary form must reproduce the above
+ *        copyright notice, this list of conditions and the following
+ *        disclaimer in the documentation and/or other materials
+ *        provided with the distribution.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  ******************************************************************************/
 
 /******************************************************************************
@@ -31,19 +43,20 @@
  *
  * Revision History:
  *
- *      06-01-13 : PLX SDK v7.00
+ *      01-01-18 : PLX SDK v8.00
  *
  ******************************************************************************/
 
 
 #include "Eep_8000.h"
+#include "PlxApi.h"
 
 #if defined(PLX_DOS)
     #include "ChipFunc.h"
     #include "SuppFunc.h"
 #else
     #include "PlxApiDebug.h"
-    #include "PlxApiI2cAa.h"
+    #include "PlxApiDirect.h"
 #endif
 
 
@@ -73,15 +86,11 @@ Plx8000_EepromPresent(
     if (OffsetCtrl == 0x0)
     {
         *pStatus = PLX_EEPROM_STATUS_NONE;
-        return ApiUnsupportedFunction;
+        return PLX_STATUS_UNSUPPORTED;
     }
 
     // Get EEPROM Control/Status
-    RegValue =
-        PLX_8000_REG_READ(
-            pdx,
-            OffsetCtrl
-            );
+    RegValue = PlxPci_PlxMappedRegisterRead( pdx, OffsetCtrl, NULL );
 
     // Check if an EEPROM is present (bit 16)
     if (RegValue & (1 << 16))
@@ -101,7 +110,7 @@ Plx8000_EepromPresent(
         *pStatus = PLX_EEPROM_STATUS_NONE;
     }
 
-    return ApiSuccess;
+    return PLX_STATUS_OK;
 }
 
 
@@ -132,21 +141,21 @@ Plx8000_EepromGetAddressWidth(
 
     // Verify access is supported
     if (OffsetCtrl == 0x0)
-        return ApiUnsupportedFunction;
+    {
+        return PLX_STATUS_UNSUPPORTED;
+    }
 
     // Get EEPROM Control/Status
-    RegValue =
-        PLX_8000_REG_READ(
-            pdx,
-            OffsetCtrl
-            );
+    RegValue = PlxPci_PlxMappedRegisterRead( pdx, OffsetCtrl, NULL );
 
     *pWidth = (U8)(RegValue >> 22) & 0x3;
 
     if (*pWidth == 0xFF)
+    {
         *pWidth = 0;
+    }
 
-    return ApiSuccess;
+    return PLX_STATUS_OK;
 }
 
 
@@ -174,14 +183,12 @@ Plx8000_EepromSetAddressWidth(
 
     // Verify access is supported
     if (OffsetCtrl == 0x0)
-        return ApiUnsupportedFunction;
+    {
+        return PLX_STATUS_UNSUPPORTED;
+    }
 
     // Get EEPROM Control/Status
-    RegValue =
-        PLX_8000_REG_READ(
-            pdx,
-            OffsetCtrl
-            );
+    RegValue = PlxPci_PlxMappedRegisterRead( pdx, OffsetCtrl, NULL );
 
     // Clear command field [15:13] to avoid EEPROM cycle
     RegValue &= ~(7 << 13);
@@ -190,23 +197,15 @@ Plx8000_EepromSetAddressWidth(
     RegValue |= (1 << 21);
 
     // Enable override
-    PLX_8000_REG_WRITE(
-        pdx,
-        OffsetCtrl,
-        RegValue
-        );
+    PlxPci_PlxMappedRegisterWrite( pdx, OffsetCtrl, RegValue );
 
     // Verify width is overridable
-    RegValue =
-        PLX_8000_REG_READ(
-            pdx,
-            OffsetCtrl
-            );
+    RegValue = PlxPci_PlxMappedRegisterRead( pdx, OffsetCtrl, NULL );
 
     if ((RegValue & (1 << 21)) == 0)
     {
         DebugPrintf(("ERROR - EEPROM width override not supported\n"));
-        return ApiUnsupportedFunction;
+        return PLX_STATUS_UNSUPPORTED;
     }
 
     // Clear command field [15:13] to avoid EEPROM cycle
@@ -219,13 +218,9 @@ Plx8000_EepromSetAddressWidth(
     RegValue |= ((width & 0x3) << 22);
 
     // Set new address width
-    PLX_8000_REG_WRITE(
-        pdx,
-        OffsetCtrl,
-        RegValue
-        );
+    PlxPci_PlxMappedRegisterWrite( pdx, OffsetCtrl, RegValue );
 
-    return ApiSuccess;
+    return PLX_STATUS_OK;
 }
 
 
@@ -260,12 +255,18 @@ Plx8000_EepromCrcGet(
         case PLX_FAMILY_BRIDGE_PCIE_P2P:
             // 8111/8112 don't support CRC
             if (pdx->Key.PlxChip != 0x8114)
-                return ApiUnsupportedFunction;
+            {
+                return PLX_STATUS_UNSUPPORTED;
+            }
 
             if (pdx->Key.PlxRevision >= 0xBA)
+            {
                 OffsetCrc = 0x3EC;
+            }
             else
+            {
                 OffsetCrc = 0x378;
+            }
             break;
 
         case PLX_FAMILY_VEGA_LITE:
@@ -278,6 +279,7 @@ Plx8000_EepromCrcGet(
 
         case PLX_FAMILY_DRACO_2:
         case PLX_FAMILY_CAPELLA_1:
+        case PLX_FAMILY_CAPELLA_2:
             // Determine EEPROM size to get CRC location
             Plx8000_EepromReadByOffset( pdx, 0, &Value_32 );
 
@@ -286,7 +288,7 @@ Plx8000_EepromCrcGet(
             {
                 DebugPrintf(("ERROR - EEPROM byte count invalid\n"));
                 *pCrcStatus = PLX_CRC_INVALID;
-                return ApiInvalidData;
+                return PLX_STATUS_INVALID_DATA;
             }
 
             // CRC location after reg addr/data values
@@ -295,7 +297,7 @@ Plx8000_EepromCrcGet(
 
         default:
             DebugPrintf(("ERROR - Device (%04X) doesn't support CRC\n", pdx->Key.PlxChip));
-            return ApiUnsupportedFunction;
+            return PLX_STATUS_UNSUPPORTED;
     }
 
     // Read CRC from EEPROM
@@ -313,28 +315,28 @@ Plx8000_EepromCrcGet(
     }
 
     // Get EEPROM and CRC status
-    Value_32 =
-        PLX_8000_REG_READ(
-            pdx,
-            0x260
-            );
+    Value_32 = PlxPci_PlxMappedRegisterRead( pdx, 0x260, NULL );
 
     // Get EEPROM status bits [17:16]
     Value_32 = (Value_32 >> 16) & 0x3;
 
     if (Value_32 == 1)
+    {
         *pCrcStatus = PLX_CRC_VALID;
+    }
     else
+    {
         *pCrcStatus = PLX_CRC_INVALID;
+    }
 
     DebugPrintf((
-        "CRC = %08X [%s] (offset=%02X)\n",
+        "CRC = %08Xh [%s] (offset=%02Xh)\n",
         (int)*pCrc,
         (*pCrcStatus == PLX_CRC_VALID) ? "Valid" : "Invalid or Undetermined",
         OffsetCrc
         ));
 
-    return ApiSuccess;
+    return PLX_STATUS_OK;
 }
 
 
@@ -371,12 +373,18 @@ Plx8000_EepromCrcUpdate(
         case PLX_FAMILY_BRIDGE_PCIE_P2P:
             // 8111/8112 don't support CRC
             if (pdx->Key.PlxChip != 0x8114)
-                return ApiUnsupportedFunction;
+            {
+                return PLX_STATUS_UNSUPPORTED;
+            }
 
             if (pdx->Key.PlxRevision >= 0xBA)
+            {
                 OffsetCrc = 0x3EC;
+            }
             else
+            {
                 OffsetCrc = 0x378;
+            }
             break;
 
         case PLX_FAMILY_VEGA_LITE:
@@ -389,6 +397,7 @@ Plx8000_EepromCrcUpdate(
 
         case PLX_FAMILY_DRACO_2:
         case PLX_FAMILY_CAPELLA_1:
+        case PLX_FAMILY_CAPELLA_2:
             // Determine EEPROM size to get CRC location
             Plx8000_EepromReadByOffset( pdx, 0, &Value_32 );
 
@@ -396,7 +405,7 @@ Plx8000_EepromCrcUpdate(
             if ((Value_32 >> 16) == 0xFFFF)
             {
                 DebugPrintf(("ERROR - EEPROM byte count invalid\n"));
-                return ApiInvalidData;
+                return PLX_STATUS_INVALID_DATA;
             }
 
             // CRC location after EEPROM (header + reg addr/data values)
@@ -408,14 +417,14 @@ Plx8000_EepromCrcUpdate(
 
         default:
             DebugPrintf(("ERROR - Device (%04X) doesn't support CRC\n", pdx->Key.PlxChip));
-            return ApiUnsupportedFunction;
+            return PLX_STATUS_UNSUPPORTED;
     }
 
     // Initialize CRC
     Crc = (U32)-1;
 
     // Calculate CRC by reading all values in EEPROM
-    for (offset=OffsetCalcStart; offset < OffsetCrc; offset += sizeof(U32))
+    for (offset = OffsetCalcStart; offset < OffsetCrc; offset += sizeof(U32))
     {
         // Read next EEPROM value
         if (offset & 0x3)
@@ -426,9 +435,13 @@ Plx8000_EepromCrcUpdate(
 
             // If final data not aligned on DWord, pad with 0's
             if ((offset + sizeof(U16)) < OffsetCrc)
+            {
                 Plx8000_EepromReadByOffset_16( pdx, offset + sizeof(U16), &Value_16 );
+            }
             else
+            {
                 Value_16 = 0;
+            }
             Value_32 |= ((U32)Value_16) << 16;
         }
         else
@@ -440,7 +453,7 @@ Plx8000_EepromCrcUpdate(
         Plx8000_EepromComputeNextCrc( &Crc, Value_32 );
     }
 
-    DebugPrintf(("Calculated CRC = %08X (offset=%X)\n", (int)Crc, OffsetCrc));
+    DebugPrintf(("Calculated CRC = %08Xh (offset=%02Xh)\n", (int)Crc, OffsetCrc));
 
     // Update CRC in EEPROM if requested
     if (bUpdateEeprom)
@@ -452,7 +465,9 @@ Plx8000_EepromCrcUpdate(
             Plx8000_EepromWriteByOffset_16( pdx, OffsetCrc + sizeof(U16), (U16)(Crc >> 16) );
         }
         else
+        {
             Plx8000_EepromWriteByOffset( pdx, OffsetCrc, Crc );
+        }
     }
     else
     {
@@ -462,7 +477,7 @@ Plx8000_EepromCrcUpdate(
     // Return the new CRC
     *pCrc = Crc;
 
-    return ApiSuccess;
+    return PLX_STATUS_OK;
 }
 
 
@@ -496,22 +511,18 @@ Plx8000_EepromReadByOffset(
 
     // Verify access is supported
     if (OffsetCtrl == 0x0)
-        return ApiUnsupportedFunction;
+    {
+        return PLX_STATUS_UNSUPPORTED;
+    }
 
     // Wait until EEPROM is ready
-    if (Plx8000_EepromWaitIdle(
-            pdx
-            ) == FALSE)
+    if (Plx8000_EepromWaitIdle( pdx ) == FALSE)
     {
-        return ApiWaitTimeout;
+        return PLX_STATUS_TIMEOUT;
     }
 
     // Get EEPROM control register
-    RegValue =
-        PLX_8000_REG_READ(
-            pdx,
-            OffsetCtrl
-            );
+    RegValue = PlxPci_PlxMappedRegisterRead( pdx, OffsetCtrl, NULL );
 
     // Some devices don't report byte addressing
     if ((pdx->Key.PlxChip == 0x8114) ||
@@ -525,34 +536,31 @@ Plx8000_EepromReadByOffset(
         // Determine byte addressing ([23:22])
         EepWidth = (RegValue >> 22) & 0x3;
         if (EepWidth == 0)
+        {
            EepWidth = 1;
+        }
     }
 
     // Verify offset doesn't exceed byte addressing
     if (offset >= ((U32)1 << (EepWidth * 8)))
     {
-        DebugPrintf(("ERROR - Offset (%X) exceeds %d byte-addresssing\n", (int)offset, (int)EepWidth));
-        return ApiInvalidOffset;
+        DebugPrintf((
+            "ERROR - Offset (%02Xh) exceeds %dB addressing\n",
+            (int)offset, (int)EepWidth
+            ));
+        return PLX_STATUS_INVALID_OFFSET;
     }
 
     // For 3-byte addressing, set upper byte
     if (EepWidth == 3)
     {
-        RegUpper =
-            PLX_8000_REG_READ(
-                pdx,
-                OffsetCtrl + 0xC    // Offset x26Ch
-                );
+        RegUpper = PlxPci_PlxMappedRegisterRead( pdx, OffsetCtrl + 0xC, NULL );
 
         // Set 3rd address byte (26Ch[7:0])
         RegUpper &= ~(0xFF << 0);
         RegUpper |= (offset >> 16) & 0xFF;
 
-        PLX_8000_REG_WRITE(
-            pdx,
-            OffsetCtrl + 0xC,   // Offset x26Ch
-            RegUpper
-            );
+        PlxPci_PlxMappedRegisterWrite( pdx, OffsetCtrl + 0xC, RegUpper );
     }
 
     // Convert offset to an index
@@ -571,19 +579,12 @@ Plx8000_EepromReadByOffset(
         (PLX8000_EE_CMD_READ  << 13);      // EEPROM command
 
     // Send EEPROM command
-    Plx8000_EepromSendCommand(
-        pdx,
-        RegValue
-        );
+    Plx8000_EepromSendCommand( pdx, RegValue );
 
-    // Return EEPROM data
-    *pValue =
-        PLX_8000_REG_READ(
-            pdx,
-            OffsetCtrl + 0x4    // Offset x264h
-            );
+    // Return EEPROM data (x264h)
+    *pValue = PlxPci_PlxMappedRegisterRead( pdx, OffsetCtrl + 0x4, NULL );
 
-    return ApiSuccess;
+    return PLX_STATUS_OK;
 }
 
 
@@ -614,22 +615,18 @@ Plx8000_EepromWriteByOffset(
 
     // Verify access is supported
     if (OffsetCtrl == 0x0)
-        return ApiUnsupportedFunction;
+    {
+        return PLX_STATUS_UNSUPPORTED;
+    }
 
     // Wait until EEPROM is ready
-    if (Plx8000_EepromWaitIdle(
-            pdx
-            ) == FALSE)
+    if (Plx8000_EepromWaitIdle( pdx ) == FALSE)
     {
-        return ApiWaitTimeout;
+        return PLX_STATUS_TIMEOUT;
     }
 
     // Get EEPROM control register
-    RegValue =
-        PLX_8000_REG_READ(
-            pdx,
-            OffsetCtrl
-            );
+    RegValue = PlxPci_PlxMappedRegisterRead( pdx, OffsetCtrl, NULL );
 
     // Some devices don't report byte addressing
     if ((pdx->Key.PlxChip == 0x8114) ||
@@ -643,34 +640,31 @@ Plx8000_EepromWriteByOffset(
         // Determine byte addressing ([23:22])
         EepWidth = (RegValue >> 22) & 0x3;
         if (EepWidth == 0)
+        {
            EepWidth = 1;
+        }
     }
 
     // Verify offset doesn't exceed byte addressing
     if (offset >= ((U32)1 << (EepWidth * 8)))
     {
-        DebugPrintf(("ERROR - Offset (%X) exceeds %d byte-addresssing\n", (int)offset, (int)EepWidth));
-        return ApiInvalidOffset;
+        DebugPrintf((
+            "ERROR - Offset (%02Xh) exceeds %dB addressing\n",
+           (int)offset, (int)EepWidth
+           ));
+        return PLX_STATUS_INVALID_OFFSET;
     }
 
     // For 3-byte addressing, set upper byte
     if (EepWidth == 3)
     {
-        RegUpper =
-            PLX_8000_REG_READ(
-                pdx,
-                OffsetCtrl + 0xC    // Offset x26Ch
-                );
+        RegUpper = PlxPci_PlxMappedRegisterRead( pdx, OffsetCtrl + 0xC, NULL );
 
         // Set 3rd address byte (26Ch[7:0])
         RegUpper &= ~(0xFF << 0);
         RegUpper |= (offset >> 16) & 0xFF;
 
-        PLX_8000_REG_WRITE(
-            pdx,
-            OffsetCtrl + 0xC,   // Offset x26Ch
-            RegUpper
-            );
+        PlxPci_PlxMappedRegisterWrite( pdx, OffsetCtrl + 0xC, RegUpper );
     }
 
     // Convert offset to an index
@@ -688,12 +682,8 @@ Plx8000_EepromWriteByOffset(
         RegValue | (PLX8000_EE_CMD_WRITE_ENABLE << 13)
         );
 
-    // Prepare EEPROM data
-    PLX_8000_REG_WRITE(
-        pdx,
-        OffsetCtrl + 0x4,   // Offset x264h
-        value
-        );
+    // Prepare EEPROM data (264h)
+    PlxPci_PlxMappedRegisterWrite( pdx, OffsetCtrl + 0x4, value );
 
     // Prepare EEPROM write command
     RegValue |=
@@ -702,12 +692,9 @@ Plx8000_EepromWriteByOffset(
         (PLX8000_EE_CMD_WRITE << 13);      // EEPROM command
 
     // Send EEPROM write command
-    Plx8000_EepromSendCommand(
-        pdx,
-        RegValue
-        );
+    Plx8000_EepromSendCommand( pdx, RegValue );
 
-    return ApiSuccess;
+    return PLX_STATUS_OK;
 }
 
 
@@ -735,23 +722,23 @@ Plx8000_EepromReadByOffset_16(
     *pValue = 0;
 
     // Get 32-bit value
-    status =
-        Plx8000_EepromReadByOffset(
-            pdx,
-            (offset & ~0x3),
-            &Value_32
-            );
-
-    if (status != ApiSuccess)
+    status = Plx8000_EepromReadByOffset( pdx, (offset & ~0x3), &Value_32 );
+    if (status != PLX_STATUS_OK)
+    {
         return status;
+    }
 
     // Return desired 16-bit portion
     if (offset & 0x3)
+    {
         *pValue = (U16)(Value_32 >> 16);
+    }
     else
+    {
         *pValue = (U16)Value_32;
+    }
 
-    return ApiSuccess;
+    return PLX_STATUS_OK;
 }
 
 
@@ -776,28 +763,24 @@ Plx8000_EepromWriteByOffset_16(
 
 
     // Get current 32-bit value
-    status =
-        Plx8000_EepromReadByOffset(
-            pdx,
-            (offset & ~0x3),
-            &Value_32
-            );
-
-    if (status != ApiSuccess)
+    status = Plx8000_EepromReadByOffset( pdx, (offset & ~0x3), &Value_32 );
+    if (status != PLX_STATUS_OK)
+    {
         return status;
+    }
 
     // Insert new 16-bit value in correct location
     if (offset & 0x3)
+    {
         Value_32 = ((U32)value << 16) | (Value_32 & 0xFFFF);
+    }
     else
+    {
         Value_32 = ((U32)value) | (Value_32 & 0xFFFF0000);
+    }
 
     // Update EEPROM
-    return Plx8000_EepromWriteByOffset(
-        pdx,
-        (offset & ~0x3),
-        Value_32
-        );
+    return Plx8000_EepromWriteByOffset( pdx, (offset & ~0x3), Value_32 );
 }
 
 
@@ -826,14 +809,12 @@ Plx8000_EepromWaitIdle(
 
     // Verify access is supported
     if (OffsetCtrl == 0x0)
+    {
         return FALSE;
+    }
 
     // Get EEPROM control register
-    RegCmd =
-        PLX_8000_REG_READ(
-            pdx,
-            OffsetCtrl
-            );
+    RegCmd = PlxPci_PlxMappedRegisterRead( pdx, OffsetCtrl, NULL );
 
     // Clear command field [15:13]
     RegCmd &= ~(7 << 13);
@@ -855,7 +836,7 @@ Plx8000_EepromWaitIdle(
          * complete. Without this dummy command, the 1st EEPROM read
          * command will fail.
          *********************************************************/
-        PLX_8000_REG_WRITE( pdx, OffsetCtrl, RegCmd | (PLX8000_EE_CMD_READ << 13) );
+        PlxPci_PlxMappedRegisterWrite( pdx, OffsetCtrl, RegCmd | (PLX8000_EE_CMD_READ << 13) );
         RegCmd &= ~(1 << 19);
         Plx_sleep( 50 );
     }
@@ -870,21 +851,14 @@ Plx8000_EepromWaitIdle(
     do
     {
         // Send command to get EEPROM status in bits [31:24]
-        Plx8000_EepromSendCommand(
-            pdx,
-            RegCmd
-            );
+        Plx8000_EepromSendCommand( pdx, RegCmd  );
 
         // Get EEPROM control register
-        RegValue =
-            PLX_8000_REG_READ(
-                pdx,
-                OffsetCtrl
-                );
+        RegValue = PlxPci_PlxMappedRegisterRead( pdx, OffsetCtrl, NULL );
 
         // Check EEPROM read (bit 24) & write ([30:28]) status bits
         if ( ((RegValue & (1 << 24)) == 0) &&
-             ((RegValue & (7 << 28)) == 0))
+             ((RegValue & (7 << 28)) == 0) )
         {
             return TRUE;
         }
@@ -923,14 +897,12 @@ Plx8000_EepromSendCommand(
 
     // Verify access is supported
     if (OffsetCtrl == 0x0)
+    {
         return FALSE;
+    }
 
     // Send EEPROM command
-    PLX_8000_REG_WRITE(
-        pdx,
-        OffsetCtrl,
-        command
-        );
+    PlxPci_PlxMappedRegisterWrite( pdx, OffsetCtrl, command );
 
     /***************************************************************
      * For Capella-1, ~10us delay is needed after issuing a command
@@ -938,10 +910,13 @@ Plx8000_EepromSendCommand(
      * should only be required for PCI access mode due to speed.
      * The method is to perform multiple register reads (~1-2us each).
      **************************************************************/
-    if ((pdx->Key.PlxFamily == PLX_FAMILY_CAPELLA_1) && (pdx->Key.ApiMode == PLX_API_MODE_PCI))
+    if ( (pdx->Key.PlxFamily == PLX_FAMILY_CAPELLA_1) &&
+         (pdx->Key.ApiMode == PLX_API_MODE_PCI) )
     {
-        for (Timeout=0; Timeout < 200; Timeout++)
-            RegValue = PLX_8000_REG_READ( pdx, OffsetCtrl );
+        for (Timeout = 0; Timeout < 200; Timeout++)
+        {
+            RegValue = PlxPci_PlxMappedRegisterRead( pdx, OffsetCtrl, NULL );
+        }
     }
 
     // Setup timeout counter
@@ -951,15 +926,13 @@ Plx8000_EepromSendCommand(
     do
     {
         // Get EEPROM control register
-        RegValue =
-            PLX_8000_REG_READ(
-                pdx,
-                OffsetCtrl
-                );
+        RegValue = PlxPci_PlxMappedRegisterRead( pdx, OffsetCtrl, NULL );
 
         // EEPROM command is complete if status [19:18] is 0 or 2 (with CRC error)
         if ((RegValue & (1 << 18)) == 0)
+        {
             return TRUE;
+        }
 
         // Decrement timeout
         Timeout--;
@@ -990,15 +963,19 @@ Plx8000_EepromComputeNextCrc(
 
 
     // Step through each bit of the CRC
-    for( i=0; i<32; ++i )
+    for( i = 0; i < 32; ++i )
     {
         // Shift the CRC, XOR'ing in the constant as required
-        XorValue = ((*pCrc ^ (NextEepromValue << i)) & (1 << 31));
+        XorValue = ((*pCrc ^ (NextEepromValue << i)) & ((U32)1 << 31));
 
         if (XorValue)
+        {
             XorValue = CONST_CRC_XOR_VALUE;
+        }
         else
+        {
             XorValue = 0;
+        }
 
         // XOR to update the CRC
         *pCrc = (*pCrc << 1) ^ XorValue;
@@ -1031,12 +1008,16 @@ Plx8000_EepromGetCtrlOffset(
     {
         // In Legacy mode (EP only), EEPROM offset moves
         if (pdx->Key.DeviceMode == PLX_PORT_LEGACY_ENDPOINT)
+        {
             OffsetCtrl = 0x1260;
+        }
         else
         {
             // In Enhanced mode, EEPROM access through USB EP is not supported
             if (pdx->Key.PlxPort == PLX_FLAG_PORT_PCIE_TO_USB)
+            {
                 OffsetCtrl = 0x0;
+            }
         }
     }
 

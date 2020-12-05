@@ -2,39 +2,52 @@
 #define __PLX_TYPES_H
 
 /*******************************************************************************
- * Copyright (c) PLX Technology, Inc.
+ * Copyright 2019 Broadcom Inc.
+ * Copyright 2013-2018 Avago Technologies
+ * Copyright (c) 2009 to 2012 PLX Technology Inc.  All rights reserved.
  *
- * PLX Technology Inc. licenses this source file under the GNU Lesser General Public
- * License (LGPL) version 2.  This source file may be modified or redistributed
- * under the terms of the LGPL and without express permission from PLX Technology.
+ * This software is available to you under a choice of one of two
+ * licenses.  You may choose to be licensed under the terms of the GNU
+ * General Public License (GPL) Version 2, available from the file
+ * COPYING in the main directorY of this source tree, or the
+ * BSD license below:
  *
- * PLX Technology, Inc. provides this software AS IS, WITHOUT ANY WARRANTY,
- * EXPRESS OR IMPLIED, INCLUDING, WITHOUT LIMITATION, ANY WARRANTY OF
- * MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.  PLX makes no guarantee
- * or representations regarding the use of, or the results of the use of,
- * the software and documentation in terms of correctness, accuracy,
- * reliability, currentness, or otherwise; and you rely on the software,
- * documentation and results solely at your own risk.
+ *     Redistribution and use in source and binary forms, with or
+ *     without modification, are permitted provided that the following
+ *     conditions are met:
  *
- * IN NO EVENT SHALL PLX BE LIABLE FOR ANY LOSS OF USE, LOSS OF BUSINESS,
- * LOSS OF PROFITS, INDIRECT, INCIDENTAL, SPECIAL OR CONSEQUENTIAL DAMAGES
- * OF ANY KIND.
+ *      - Redistributions of source code must retain the above
+ *        copyright notice, this list of conditions and the following
+ *        disclaimer.
  *
+ *      - Redistributions in binary form must reproduce the above
+ *        copyright notice, this list of conditions and the following
+ *        disclaimer in the documentation and/or other materials
+ *        provided with the distribution.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  ******************************************************************************/
 
 /******************************************************************************
- * 
+ *
  * File Name:
  *
  *      PlxTypes.h
  *
  * Description:
  *
- *      This file includes PLX SDK types and definitions
+ *      This file includes SDK types and definitions
  *
  * Revision:
  *
- *      07-01-13 : PLX SDK v7.00
+ *      01-01-19 : PCI/PCIe SDK v8.00
  *
  ******************************************************************************/
 
@@ -45,10 +58,13 @@
 #include "PciTypes.h"
 
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+
+// Set structure packing for consistentcy in kernel/user levels & save current
+#pragma pack( push, 4 )
 
 
 
@@ -67,7 +83,7 @@ extern "C" {
 #define PLX_PTR_TO_INT( ptr )                     ((PLX_UINT_PTR)(ptr))
 
 // Convert integer to a pointer
-#define PLX_INT_TO_PTR( int )                     ((VOID*)(PLX_UINT_PTR)(int))
+#define PLX_INT_TO_PTR( intval )                  ((VOID*)(PLX_UINT_PTR)(intval))
 
 // Macros that guarantee correct endian format regardless of CPU platform
 #if defined(PLX_BIG_ENDIAN)
@@ -79,29 +95,24 @@ extern "C" {
 #endif
 
 // Macros to support portable type casting on BE/LE platforms
-#if (PLX_SIZE_64 == 4)
-    #define PLX_64_HIGH_32(value)                 0
-    #define PLX_64_LOW_32(value)                  ((U32)(value))
+#if defined(PLX_BIG_ENDIAN)
+    #define PLX_64_HIGH_32(value)             ((U32)((U64)value))
+    #define PLX_64_LOW_32(value)              ((U32)(((U64)value) >> 32))
+
+    #define PLX_CAST_64_TO_8_PTR( ptr64 )     (U8*) ((U8*)PLX_INT_TO_PTR(ptr64) + (7*sizeof(U8)))
+    #define PLX_CAST_64_TO_16_PTR( ptr64 )    (U16*)((U8*)PLX_INT_TO_PTR(ptr64) + (6*sizeof(U8)))
+    #define PLX_CAST_64_TO_32_PTR( ptr64 )    (U32*)((U8*)PLX_INT_TO_PTR(ptr64) + sizeof(U32))
+
+    #define PLX_LE_U32_BIT( pos )             ((U32)(1 << (31 - (pos))))
 #else
-    #if defined(PLX_BIG_ENDIAN)
-        #define PLX_64_HIGH_32(value)             ((U32)((U64)value))
-        #define PLX_64_LOW_32(value)              ((U32)(((U64)value) >> 32))
+    #define PLX_64_HIGH_32(value)             ((U32)(((U64)value) >> 32))
+    #define PLX_64_LOW_32(value)              ((U32)((U64)value))
 
-        #define PLX_CAST_64_TO_8_PTR( ptr64 )     (U8*) ((U8*)(ptr64) + (7*sizeof(U8)))
-        #define PLX_CAST_64_TO_16_PTR( ptr64 )    (U16*)((U8*)(ptr64) + (6*sizeof(U8)))
-        #define PLX_CAST_64_TO_32_PTR( ptr64 )    (U32*)((U8*)(ptr64) + sizeof(U32))
+    #define PLX_CAST_64_TO_8_PTR( ptr64 )     (U8*) PLX_INT_TO_PTR(ptr64)
+    #define PLX_CAST_64_TO_16_PTR( ptr64 )    (U16*)PLX_INT_TO_PTR(ptr64)
+    #define PLX_CAST_64_TO_32_PTR( ptr64 )    (U32*)PLX_INT_TO_PTR(ptr64)
 
-        #define PLX_LE_U32_BIT( pos )             ((U32)(1 << (31 - (pos))))
-    #else
-        #define PLX_64_HIGH_32(value)             ((U32)(((U64)value) >> 32))
-        #define PLX_64_LOW_32(value)              ((U32)((U64)value))
-
-        #define PLX_CAST_64_TO_8_PTR( ptr64 )     (U8*) (ptr64)
-        #define PLX_CAST_64_TO_16_PTR( ptr64 )    (U16*)(ptr64)
-        #define PLX_CAST_64_TO_32_PTR( ptr64 )    (U32*)(ptr64)
-
-        #define PLX_LE_U32_BIT( pos )             ((U32)(1 << (pos)))
-    #endif
+    #define PLX_LE_U32_BIT( pos )             ((U32)(1 << (pos)))
 #endif
 
 
@@ -138,8 +149,9 @@ extern "C" {
     #define FALSE             0
 #endif
 
-#if defined(PLX_MSWINDOWS) 
+#if defined(PLX_MSWINDOWS)
     #define PLX_TIMEOUT_INFINITE        INFINITE
+    #define PLX_MEM_POOL_TAG            '_XLP'  // "PLX_" tag for driver mem alloc
 #elif defined(PLX_LINUX) || defined(PLX_LINUX_DRIVER)
     #define PLX_TIMEOUT_INFINITE        MAX_SCHEDULE_TIMEOUT
 
@@ -161,16 +173,78 @@ extern "C" {
 
 
 
+/******************************************
+ *   Definitions for Generic Bitmasks
+ ******************************************/
+/// Declare a generic bitmask variable with arbitrary size (auto-aligns to 32-bit multiple)
+#define PEX_BITMASK_T(Name,Bits)            U32 (Name)[ ((Bits) + 31) / 32 ]
+
+// Set a bit in generic bitmask variable
+#define PEX_BITMASK_SET(Mask,Bit)           ( (Mask)[ (Bit) / 32 ] |= ((U32)1 << ((Bit) % 32)) )
+
+// Set all bits in generic bitmask variable
+#define PEX_BITMASK_SET_ALL(Mask)           memset( (Mask), 0xFF, sizeof((Mask)) )
+
+// Clear a bit in generic bitmask variable
+#define PEX_BITMASK_CLEAR(Mask,Bit)         ( (Mask)[ (Bit) / 32 ] &= ~((U32)1 << ((Bit) % 32)) )
+
+// Clear all bits in generic bitmask variable
+#define PEX_BITMASK_CLEAR_ALL(Mask)         memset( (Mask), 0, sizeof((Mask)) )
+
+// Copies one mask to another
+#define PEX_BITMASK_COPY(Src,Dest)          memcpy( (Dest), (Src), sizeof((Dest)) )
+
+// Test whether a specific bit is set in generic bitmask variable
+#define PEX_BITMASK_TEST(Mask,Bit)          ( ((Mask)[ (Bit) / 32 ] & ((U32)1 << ((Bit) % 32))) != 0 )
+
+// Test whether any bit is set in generic bitmask variable
+#define PEX_BITMASK_TEST_ANY(Mask)          __PEX_BITMASK_TEST_ANY( (Mask), sizeof( (Mask) ) )
+
+// Helper function for PEX_BITMASK_TEST_ANY macro
+static __inline U8 __PEX_BITMASK_TEST_ANY( U32 *PtrBitMask, U32 ByteSize )
+{
+    U32 idx = 0;
+
+    while ( idx < (ByteSize / sizeof(U32)) )
+    {
+        if (PtrBitMask[ idx ] != 0)
+        {
+            return TRUE;
+        }
+        idx++;
+    }
+    return FALSE;
+}
+
+// Return the count of set bits in a mask
+#define PEX_BITMASK_GET_SET_COUNT(Mask)     __PEX_BITMASK_GET_SET_COUNT( (Mask), sizeof( (Mask) ) )
+
+// Helper function for PEX_BITMASK_GET_SET_COUNT macro
+static __inline U32 __PEX_BITMASK_GET_SET_COUNT( U32 *PtrBitMask, U32 ByteSize )
+{
+    U32 bit = 0;
+    U32 bitCount = 0;
+
+    while (bit < (ByteSize * 8))
+    {
+        bitCount += PEX_BITMASK_TEST( PtrBitMask, bit );
+        bit++;
+    }
+    return bitCount;
+}
+
+
 
 /******************************************
  *   PLX-specific types & structures
  ******************************************/
-
 // Mode PLX API uses to access device
 typedef enum _PLX_API_MODE
 {
     PLX_API_MODE_PCI,                   // Device accessed via PLX driver over PCI/PCIe
     PLX_API_MODE_I2C_AARDVARK,          // Device accessed via Aardvark I2C USB
+    PLX_API_MODE_MDIO_SPLICE,           // Device accessed via Splice MDIO USB
+    PLX_API_MODE_SDB,                   // Device accessed via Serial Debug Port
     PLX_API_MODE_TCP                    // Device accessed via TCP/IP
 } PLX_API_MODE;
 
@@ -185,7 +259,7 @@ typedef enum _PLX_ACCESS_TYPE
 } PLX_ACCESS_TYPE;
 
 
-// Mode PLX API uses to access device
+// PLX chip families
 typedef enum _PLX_CHIP_FAMILY
 {
     PLX_FAMILY_NONE = 0,
@@ -198,15 +272,32 @@ typedef enum _PLX_CHIP_FAMILY
     PLX_FAMILY_VEGA,                    // 8516,8524,8532
     PLX_FAMILY_VEGA_LITE,               // 8508,8512,8517,8518
     PLX_FAMILY_DENEB,                   // 8612,8616,8624,8632,8647,8648
-    PLX_FAMILY_SIRIUS,                  // 8604,8606,8608,8609,8613,8614,8615,8617,8618,8619
+    PLX_FAMILY_SIRIUS,                  // 8604,8606,8608,8609,8613,8614,8615
+                                        //   8617,8618,8619
     PLX_FAMILY_CYGNUS,                  // 8625,8636,8649,8664,8680,8696
     PLX_FAMILY_SCOUT,                   // 8700
-    PLX_FAMILY_DRACO_1,                 // 8408,8416,8712,8716,8724,8732,8747,8748
-    PLX_FAMILY_DRACO_2,                 // 8713,8717,8725,8733,8749
+    PLX_FAMILY_DRACO_1,                 // 8712,8716,8724,8732,8747,8748,8749
+    PLX_FAMILY_DRACO_2,                 // 8713,8717,8725,8733 + [Draco 1 rev BA]
     PLX_FAMILY_MIRA,                    // 2380,3380,3382,8603,8605
     PLX_FAMILY_CAPELLA_1,               // 8714,8718,8734,8750,8764,8780,8796
-    PLX_FAMILY_CAPELLA_2                // 8715,8719,8735,8751,8765,8781,8797
+    PLX_FAMILY_CAPELLA_2,               // 9712,9716,9733,9749,9750,9765,9781,9797
+    PLX_FAMILY_ATLAS,                   // C010,C011,C012
+    PLX_FAMILY_LAST_ENTRY               // -- Must be final entry --
 } PLX_CHIP_FAMILY;
+
+
+// PLX chip configured mode
+typedef enum _PLX_CHIP_MODE
+{
+    PLX_CHIP_MODE_UNKNOWN,
+    PLX_CHIP_MODE_STANDARD,             // Standard switch fan-out mode
+    PLX_CHIP_MODE_STD_LEGACY_NT,        // Standard mode with NT but no parent DS P2P
+    PLX_CHIP_MODE_STD_NT_DS_P2P,        // Standard mode with NT & parent DS P2P
+    PLX_CHIP_MODE_VIRT_SW,              // Virtual Switch (VS) mode
+    PLX_CHIP_MODE_FABRIC,               // PCIe fabric mode
+    PLX_CHIP_MODE_ROOT_COMPLEX,         // RC mode
+    PLX_CHIP_MODE_LEGACY_ADAPTER        // MIRA legacy adapter mode
+} PLX_CHIP_MODE;
 
 
 // PLX port flags for mask
@@ -228,13 +319,17 @@ typedef enum _PLX_FLAG_PORT
     PLX_FLAG_PORT_ALUT_2        = 50,   // Bit for ALUT RAM arrays 1
     PLX_FLAG_PORT_ALUT_1        = 49,   // Bit for ALUT RAM arrays 2
     PLX_FLAG_PORT_ALUT_0        = 48,   // Bit for ALUT RAM arrays 3
-    PLX_FLAG_PORT_VS_REGS_S5    = 47,   // Bit for VS mode station 0 specific regs
-    PLX_FLAG_PORT_VS_REGS_S4    = 46,   // Bit for VS mode station 1 specific regs
-    PLX_FLAG_PORT_VS_REGS_S3    = 45,   // Bit for VS mode station 2 specific regs
-    PLX_FLAG_PORT_VS_REGS_S2    = 44,   // Bit for VS mode station 3 specific regs
-    PLX_FLAG_PORT_VS_REGS_S1    = 43,   // Bit for VS mode station 4 specific regs
-    PLX_FLAG_PORT_VS_REGS_S0    = 42,   // Bit for VS mode station 5 specific regs
-    PLX_FLAG_PORT_MAX           = 41    // Bit for highest possible standard port
+    PLX_FLAG_PORT_STN_REGS_S5   = 47,   // Bit for VS or Fabric mode station 0 specific regs
+    PLX_FLAG_PORT_STN_REGS_S4   = 46,   // Bit for VS or Fabric mode station 1 specific regs
+    PLX_FLAG_PORT_STN_REGS_S3   = 45,   // Bit for VS or Fabric mode station 2 specific regs
+    PLX_FLAG_PORT_STN_REGS_S2   = 44,   // Bit for VS or Fabric mode station 3 specific regs
+    PLX_FLAG_PORT_STN_REGS_S1   = 43,   // Bit for VS or Fabric mode station 4 specific regs
+    PLX_FLAG_PORT_STN_REGS_S0   = 42,   // Bit for VS or Fabric mode station 5 specific regs
+    PLX_FLAG_PORT_MAX           = 41,   // Bit for highest possible standard port
+
+	// Flags below are special ports for GEP (24) & its parent P2P (25)
+    PLX_FLAG_PORT_GEP           = 24,
+    PLX_FLAG_PORT_GEP_P2P       = 25
 } PLX_FLAG_PORT;
 
 
@@ -242,6 +337,7 @@ typedef enum _PLX_FLAG_PORT
 typedef enum _PLX_STATE
 {
     PLX_STATE_OK,
+    PLX_STATE_NO_CHANGE,
     PLX_STATE_WORKING,
     PLX_STATE_ERROR,
     PLX_STATE_ENABLED,
@@ -332,22 +428,20 @@ typedef enum _PLX_CRC_STATUS
 typedef enum _PLX_LINK_SPEED
 {
     PLX_LINK_SPEED_2_5_GBPS     = 1,
-    PLX_LINK_SPEED_5_0_GBPS     = 2,
-    PLX_LINK_SPEED_8_0_GBPS     = 3,
-    PLX_PCIE_GEN_1_0            = PLX_LINK_SPEED_2_5_GBPS,
-    PLX_PCIE_GEN_2_0            = PLX_LINK_SPEED_5_0_GBPS,
-    PLX_PCIE_GEN_3_0            = PLX_LINK_SPEED_8_0_GBPS
+    PLX_LINK_SPEED_5_GBPS       = 2,
+    PLX_LINK_SPEED_8_GBPS       = 3,
+    PLX_LINK_SPEED_16_GBPS      = 4
 } PLX_LINK_SPEED;
 
 
 // Interrupt generation types
 typedef enum _PLX_IRQ_TYPE
 {
-    PLX_IRQ_TYPE_NONE           = 0,                       // No interrupt
-    PLX_IRQ_TYPE_UNKNOWN        = 1,                       // Undefined interrupt type
-    PLX_IRQ_TYPE_INTX           = 2,                       // Legacy INTx interrupt (INTA,INTB,etc)
-    PLX_IRQ_TYPE_MSI            = 3,                       // MSI interrupt
-    PLX_IRQ_TYPE_MSIX           = 4                        // MSI-X interrupt
+    PLX_IRQ_TYPE_NONE           = 0,           // No interrupt
+    PLX_IRQ_TYPE_UNKNOWN        = 1,           // Undefined interrupt type
+    PLX_IRQ_TYPE_INTX           = 2,           // Legacy INTx interrupt (INTA,INTB,etc)
+    PLX_IRQ_TYPE_MSI            = 3,           // MSI interrupt
+    PLX_IRQ_TYPE_MSIX           = 4            // MSI-X interrupt
 } PLX_IRQ_TYPE;
 
 
@@ -367,16 +461,41 @@ typedef enum _PLX_PORT_TYPE
 } PLX_PORT_TYPE;
 
 
-// Non-transparent Port types
-typedef enum _PLX_NT_PORT_TYPE
+// PLX-specific port types
+typedef enum _PLX_SPECIFIC_PORT_TYPE
 {
-    PLX_NT_PORT_NONE            = 0,                       // Not an NT port
-    PLX_NT_PORT_PRIMARY         = 1,                       // NT Primary Host side port
-    PLX_NT_PORT_SECONDARY       = 2,                       // NT Seconday Host side port
-    PLX_NT_PORT_VIRTUAL         = PLX_NT_PORT_PRIMARY,     // NT Virtual-side port
-    PLX_NT_PORT_LINK            = PLX_NT_PORT_SECONDARY,   // NT Link-side port
-    PLX_NT_PORT_UNKOWN          = 0xFF                     // NT side is undetermined
-} PLX_NT_PORT_TYPE;
+    PLX_SPEC_PORT_UNKNOWN       = 0,            // Unknown port type
+    PLX_SPEC_PORT_INVALID       = 0xFF,         // Invalid port type
+    PLX_SPEC_PORT_NT_VIRTUAL    = 1,            // NT Virtual-side
+    PLX_SPEC_PORT_NT_LINK       = 2,            // NT Link-side
+    PLX_SPEC_PORT_UPSTREAM      = 3,            // Upstream port
+    PLX_SPEC_PORT_DOWNSTREAM    = 4,            // Downstream port
+    PLX_SPEC_PORT_P2P_BRIDGE    = 5,            // P2P bridge
+    PLX_SPEC_PORT_LEGACY_EP     = 6,            // Legacy EP
+    PLX_SPEC_PORT_DMA           = 7,            // DMA EP
+    PLX_SPEC_PORT_HOST          = 8,            // Host port
+    PLX_SPEC_PORT_FABRIC        = 9,            // Fabric port
+    PLX_SPEC_PORT_GEP           = 10,           // Global EP
+    PLX_SPEC_PORT_MPT           = 11,           // MPT SAS controller EP
+    PLX_SPEC_PORT_MPT_NO_SES    = 12,           // MPT EP (No SES)
+    PLX_SPEC_PORT_SYNTH_NIC     = 13,           // Synthetic NIC VF
+    PLX_SPEC_PORT_SYNTH_TWC     = 14,           // Synthetic TWC EP
+    PLX_SPEC_PORT_SYNTH_EN_EP   = 15,           // Synthetic Enabler EP
+    PLX_SPEC_PORT_SYNTH_NT      = 16,           // Synthetic NT 2.0 EP
+    PLX_SPEC_PORT_SYNTH_MPT     = 17,           // Synthetic MPT SAS controller EP
+    PLX_SPEC_PORT_SYNTH_GDMA    = 18            // Synthetic gDMA EP
+
+    // Following definitions are deprecated & only remain for compatibility
+   ,PLX_NT_PORT_NONE            = PLX_SPEC_PORT_UNKNOWN,
+    PLX_NT_PORT_PRIMARY         = PLX_SPEC_PORT_NT_VIRTUAL,
+    PLX_NT_PORT_SECONDARY       = PLX_SPEC_PORT_NT_LINK,
+    PLX_NT_PORT_VIRTUAL         = PLX_SPEC_PORT_NT_VIRTUAL,
+    PLX_NT_PORT_LINK            = PLX_SPEC_PORT_NT_LINK,
+    PLX_NT_PORT_UNKOWN          = PLX_SPEC_PORT_INVALID
+} PLX_SPECIFIC_PORT_TYPE;
+
+// For compatibility
+typedef PLX_SPECIFIC_PORT_TYPE    PLX_NT_PORT_TYPE;
 
 
 // NT port configuration types
@@ -442,17 +561,26 @@ typedef enum _PLX_DMA_RING_DELAY_TIME
 } PLX_DMA_RING_DELAY_TIME;
 
 
-// DMA Maximum Source Transfer Size
-typedef enum _PLX_DMA_MAX_SRC_TSIZE
+// DMA Maximum Source & Destination Transfer Sizes
+typedef enum _PLX_DMA_MAX_TSIZE
 {
-    PLX_DMA_MAX_SRC_TSIZE_64B  = 0,
-    PLX_DMA_MAX_SRC_TSIZE_128B = 1,
-    PLX_DMA_MAX_SRC_TSIZE_256B = 2,
-    PLX_DMA_MAX_SRC_TSIZE_512B = 3,
-    PLX_DMA_MAX_SRC_TSIZE_1K   = 4,
-    PLX_DMA_MAX_SRC_TSIZE_2K   = 5,
-    PLX_DMA_MAX_SRC_TSIZE_4K   = 7
-} PLX_DMA_SRC_MAX_TSIZE;
+    PLX_DMA_MAX_TSIZE_64B  = 0,
+    PLX_DMA_MAX_TSIZE_128B = 1,
+    PLX_DMA_MAX_TSIZE_256B = 2,
+    PLX_DMA_MAX_TSIZE_512B = 3,
+    PLX_DMA_MAX_TSIZE_1K   = 4,
+    PLX_DMA_MAX_TSIZE_2K   = 5,
+    PLX_DMA_MAX_TSIZE_4B   = 7,
+
+    // Legacy definitions may be removed in future
+    PLX_DMA_MAX_SRC_TSIZE_64B  = PLX_DMA_MAX_TSIZE_64B,
+    PLX_DMA_MAX_SRC_TSIZE_128B = PLX_DMA_MAX_TSIZE_128B,
+    PLX_DMA_MAX_SRC_TSIZE_256B = PLX_DMA_MAX_TSIZE_256B,
+    PLX_DMA_MAX_SRC_TSIZE_512B = PLX_DMA_MAX_TSIZE_512B,
+    PLX_DMA_MAX_SRC_TSIZE_1K   = PLX_DMA_MAX_TSIZE_1K,
+    PLX_DMA_MAX_SRC_TSIZE_2K   = PLX_DMA_MAX_TSIZE_2K,
+    PLX_DMA_MAX_SRC_TSIZE_4B   = PLX_DMA_MAX_TSIZE_4B
+} PLX_DMA_MAX_TSIZE;
 
 
 // Performance monitor control
@@ -463,16 +591,8 @@ typedef enum _PLX_PERF_CMD
 } PLX_PERF_CMD;
 
 
-// DMA Maximum Source Transfer Size
-typedef enum _PLX_SWITCH_MODE
-{
-    PLX_SWITCH_MODE_STANDARD   = 0,
-    PLX_SWITCH_MODE_MULTI_HOST = 2
-} PLX_SWITCH_MODE;
-
-
 // Used for device power state. Added for code compatability with Linux
-#if !defined(PLX_MSWINDOWS) 
+#if !defined(PLX_MSWINDOWS)
     typedef enum _DEVICE_POWER_STATE
     {
         PowerDeviceUnspecified = 0,
@@ -499,10 +619,34 @@ typedef struct _PLX_MODE_PROP
 
         struct
         {
+            U8    Port;
+            U32   ClockRate;
+            char *StrPath;
+        } Mdio;
+
+        struct
+        {
+            U8 Port;
+            U8 Baud;
+            U8 Cable;
+        } Sdb;
+
+        struct
+        {
             U64 IpAddress;
         } Tcp;
     };
 } PLX_MODE_PROP;
+
+// Types of supported UART cable connections for SDB
+#define SDB_UART_CABLE_DEFAULT          0
+#define SDB_UART_CABLE_UART             1
+#define SDB_UART_CABLE_USB              2
+
+// Baud rates supported by SDB
+#define SDB_BAUD_RATE_DEFAULT           0
+#define SDB_BAUD_RATE_19200             1
+#define SDB_BAUD_RATE_115200            2
 
 
 // PLX version information
@@ -545,7 +689,6 @@ typedef struct _PLX_DRIVER_PROP
     char FullName[255];              // Full driver name
     U8   bIsServiceDriver;           // Is service driver or PnP driver?
     U64  AcpiPcieEcam;               // Base address of PCIe ECAM
-    U8   Reserved[40];               // Reserved for future use
 } PLX_DRIVER_PROP;
 
 
@@ -632,7 +775,11 @@ typedef struct _PLX_DEVICE_KEY
     U16 DeviceNumber;                // Used internally by device drivers
     U8  ApiMode;                     // Mode API uses to access device
     U8  PlxPort;                     // PLX port number of device
-    U8  NTPortType;                  // If NT port, stores NT port type
+    union
+    {
+        U8  PlxPortType;             // PLX-specific port type (NT/DMA/Host/etc)
+        U8  NTPortType;              // (Deprecated) If NT, stores NT port type
+    };
     U8  NTPortNum;                   // If NT port exists, store NT port number
     U8  DeviceMode;                  // Device mode used internally by API
     U32 ApiInternal[2];              // Reserved for internal PLX API use
@@ -662,7 +809,7 @@ typedef struct _PLX_NOTIFY_OBJECT
 } PLX_NOTIFY_OBJECT;
 
 
-// PLX Interrupt Structure 
+// PLX Interrupt Structure
 typedef struct _PLX_INTERRUPT
 {
     U32 Doorbell;                    // Up to 32 doorbells
@@ -689,11 +836,6 @@ typedef struct _PLX_INTERRUPT
     U8  NTV_LE_Uncorrectable   :1;
     U8  NTV_LE_LinkStateChange :1;
     U8  NTV_LE_UncorrErrorMsg  :1;
-    U8  HotPlugAttention       :1;
-    U8  HotPlugPowerFault      :1;
-    U8  HotPlugMrlSensor       :1;
-    U8  HotPlugChangeDetect    :1;
-    U8  HotPlugCmdCompleted    :1;
 } PLX_INTERRUPT;
 
 
@@ -766,6 +908,9 @@ typedef struct _PLX_PERF_PROP
 {
     U32 IsValidTag;   // Magic number to determine validity
 
+    // Chip properties
+    U8  PlxFamily;
+
     // Port properties
     U8  PortNumber;
     U8  LinkWidth;
@@ -776,40 +921,40 @@ typedef struct _PLX_PERF_PROP
     // Ingress counters
     U32 IngressPostedHeader;
     U32 IngressPostedDW;
+    U32 IngressNonpostedHdr;
     U32 IngressNonpostedDW;
     U32 IngressCplHeader;
     U32 IngressCplDW;
     U32 IngressDllp;
-    U32 IngressPhy;
 
     // Egress counters
     U32 EgressPostedHeader;
     U32 EgressPostedDW;
+    U32 EgressNonpostedHdr;
     U32 EgressNonpostedDW;
     U32 EgressCplHeader;
     U32 EgressCplDW;
     U32 EgressDllp;
-    U32 EgressPhy;
 
     // Storage for previous counter values
 
     // Previous Ingress counters
     U32 Prev_IngressPostedHeader;
     U32 Prev_IngressPostedDW;
+    U32 Prev_IngressNonpostedHdr;
     U32 Prev_IngressNonpostedDW;
     U32 Prev_IngressCplHeader;
     U32 Prev_IngressCplDW;
     U32 Prev_IngressDllp;
-    U32 Prev_IngressPhy;
 
     // Previous Egress counters
     U32 Prev_EgressPostedHeader;
     U32 Prev_EgressPostedDW;
+    U32 Prev_EgressNonpostedHdr;
     U32 Prev_EgressNonpostedDW;
     U32 Prev_EgressCplHeader;
     U32 Prev_EgressCplDW;
     U32 Prev_EgressDllp;
-    U32 Prev_EgressPhy;
 } PLX_PERF_PROP;
 
 
@@ -844,6 +989,9 @@ typedef struct _PLX_PERF_STATS
 } PLX_PERF_STATS;
 
 
+
+// Restore previous pack value
+#pragma pack( pop )
 
 
 #ifdef __cplusplus
